@@ -1,0 +1,141 @@
+class GizyImgChanger {
+
+    // imgDiv  - div zawierający dwa zdjęcia o takim samym rozmiarze - wymagane
+    constructor(imgDiv) {
+        this.imgDiv = imgDiv;
+        this.settings = {}
+    }
+
+    info() {
+        console.log(this.settings);
+    }
+
+    start() {
+        let divs = document.querySelectorAll('.' + this.imgDiv);
+        let i;
+        for (i = 0; i < divs.length; ++i) {
+            divs[i].style.color = "green";
+            console.log(divs[i]);
+            new GElements(divs[i]);
+        }
+    }
+}
+
+class GElements {
+    constructor(div) {
+        this.imgUp = null;
+        this.imgDown = null;
+        this.imgUpDiv = null;
+        this.imgHalfDiv = null;
+        this.divAll = div;
+        this.id = 0;
+        this.imgHeight = 0;
+        this.imgWidth = 0;
+        this.getImg();
+        this.sizesHandler = this.sizes.bind(this);
+
+    }
+
+    getImgSize(img) {
+        this.imgHeight = img.clientHeight;
+        this.imgWidth = img.clientWidth;
+    }
+
+
+
+    getImg() {
+        this.imgUp = this.divAll.childNodes[1];
+        this.imgDown = this.divAll.childNodes[3];
+
+        this.getImgSize(this.imgUp);
+
+        this.imgUp.setAttribute('id', 'idImgUp;');
+        this.imgDown.setAttribute('id', 'idimgDown;');
+
+
+        this.imgUpDiv = document.createElement('div'); //tworzenie elementu
+        this.imgUpDiv.setAttribute('id', 'idImgUpDiv' + this.id); //ustaw id
+        this.imgUpDiv.appendChild(this.imgUp);
+        this.divAll.appendChild(this.imgUpDiv);
+        this.divAll.style.height = this.imgHeight + 'px';
+        this.divAll.style.width = this.imgWidth + 'px';
+        this.divAll.style.overflow="hidden";
+        this.divAll.style.userSelect="none";
+
+        this.imgUpDiv.style.cssText = "width:" + this.imgWidth + "px;position: relative;";
+        this.id++;
+
+        this.imgHalfDiv = document.createElement('div'); //tworzenie elementu
+        this.imgHalfDiv.setAttribute('id', 'idImgDownDiv' + this.id); //ustaw id
+        this.imgHalfDiv.appendChild(this.imgDown);
+        this.divAll.appendChild(this.imgHalfDiv);
+
+        this.overDiv = document.createElement('div'); //tworzenie elementu
+
+        this.overDiv.style.cssText = "height:" + this.imgHeight + "px;width:" + this.imgWidth + "px;position: relative;\n" +
+            "    top: -" + this.imgHeight * 2 + "px;z-index:100;";
+        this.overDiv.setAttribute('id', 'idOver'); //ustaw id
+        this.divAll.appendChild(this.overDiv);
+
+        this.overDiv.addEventListener('mousedown', this.chngeSize.bind(this), true);
+        this.overDiv.addEventListener('mouseup', this.changeSizeEnd.bind(this), true);
+
+        this.overDiv.addEventListener('touchstart', this.chngeSize.bind(this), true);
+        this.overDiv.addEventListener('touchend', this.changeSizeEnd.bind(this), true);
+
+
+        this.imgHalfDiv.style.cssText = "height:" + this.imgHeight + ";width:" + this.imgWidth / 2 + "px;border-right: 3px solid red;overflow: hidden;position: relative;\n" +
+            "    top: -" + this.imgHeight + "px;";
+        this.id++;
+        this.addSvg();
+
+    }
+
+    sizes(e) {
+        let width;
+        if (e.touches) {
+            width = e.touches[0].clientX - this.overDiv.offsetLeft;
+        } else {
+            width = e.pageX - this.overDiv.offsetLeft;
+        }
+
+        if (width > this.imgWidth) {
+            width = this.imgWidth;
+        }
+        this.divIcon.style.left = (width - (this.imgWidth / 2)) + "px";
+        this.imgHalfDiv.style.width = width + "px";
+    }
+
+    chngeSize() {
+        // console.log('size');
+        this.overDiv.addEventListener("mousemove", this.sizesHandler, false);
+        this.overDiv.addEventListener("touchmove", this.sizesHandler, false);
+    }
+
+    changeSizeEnd() {
+        // console.log('sizeEnd');
+        this.overDiv.removeEventListener("mousemove", this.sizesHandler, false);
+        this.overDiv.removeEventListener("touchmove", this.sizesHandler, false);
+    }
+
+    addSvg() {
+        let svgIco = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"66.951\" height=\"44.8\" viewBox=\"0 0 11255.125 7531.331\" shape-rendering=\"geometricPrecision\" text-rendering=\"geometricPrecision\" image-rendering=\"optimizeQuality\" fill-rule=\"evenodd\" clip-rule=\"evenodd\"><defs><style>.fil0{fill:#fefefe;fill-rule:nonzero}</style></defs><g id=\"Warstwa_x0020_1\"><path class=\"fil0\" d=\"M3782.693 6304.108h-992.389v1227.223L0 3765.665 2790.304 0v1227.223h992.389zM7472.432 6304.108h992.389v1227.223l2790.304-3765.666L8464.821 0v1227.223h-992.389z\"/></g></svg>"
+
+        let arrowPos = (this.imgHeight * 2) + 55;
+
+        this.divIcon = document.createElement('div');
+        this.divIcon.style.width="100%";
+        // this.divIcon.classList.add('helpFullZielen');
+        this.divIcon.style.position = "relative";
+
+
+        this.divIcon.style.top = -arrowPos + "px";
+        this.divIcon.style.zIndex = 0;
+        this.divIcon.style.textAlign = "center";
+
+        this.divIcon.insertAdjacentHTML('beforeend', svgIco);
+        this.divAll.appendChild(this.divIcon);
+    }
+}
+
+export default GizyImgChanger;
