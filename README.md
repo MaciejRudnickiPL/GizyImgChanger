@@ -1,6 +1,7 @@
 # GizyImgChanger
 Changes images between new and old versions with full screen preview.
-
+example:
+http://x20.pl/change/
 
 ## Getting Started
 To work:
