@@ -1,97 +1,198 @@
 class GizyImgChanger {
-
     // imgDiv  - div zawierający dwa zdjęcia o takim samym rozmiarze - wymagane
     constructor(imgDiv) {
-        this.imgDiv = imgDiv;
-        this.settings = {}
-    }
-
-    info() {
-        console.log(this.settings);
+        this.divWithImages = imgDiv;
+        this.settings = {
+            zIndex: 0,
+            fullScreen: {
+                full: true,// czy podgląd pełnoekranowy
+                type: 'full', //natural - wg wielkości zdjęcia , set - wg podanych wartości, css - wg css , full - pełny ekran
+                bigUrl: "/img/t2/", // gdzie się znajdują duże zdjęcia do pobrania
+                big: true,// czy są duże wersje obrazów
+                backColor: "red", // kolor tła w pełnym ekranie
+            },
+            imageSize: {
+                type: 'css', //natural - wg wielkości zdjęcia , set - wg podanych wartości, css - wg css , (full - pełny ekran dla podglądu)
+                width: 200,// null => auto
+                height: 500 //null => auto
+            }, //określa wielkość zdjęcia - false wg wstawionego wymiaru
+        }
     }
 
     start() {
-        let divs = document.querySelectorAll('.' + this.imgDiv);
+        let divs = document.querySelectorAll('.' + this.divWithImages);
         let i;
-        for (i = 0; i < divs.length; ++i) {
-            divs[i].style.color = "green";
-            console.log(divs[i]);
-            new GElements(divs[i]);
+        let length = divs.length;
+        for (i = 0; i < length; ++i) {
+            new Creator(divs[i], this.settings);
         }
     }
 }
 
-class GElements {
-    constructor(div) {
+class Creator {
+    constructor(div, sett) {
+        this.sett = sett;
         this.imgUp = null;
         this.imgDown = null;
-        this.imgUpDiv = null;
-        this.imgHalfDiv = null;
+        this.divImgUp = null;
+        this.divHalfImg = null;
         this.divAll = div;
         this.id = 0;
         this.imgHeight = 0;
         this.imgWidth = 0;
-        this.getImg();
-        this.sizesHandler = this.sizes.bind(this);
+        this.changeSizeHendler = this.changeSize.bind(this);
+        this.start();
+    }
+
+    start() {
+        this.getImages();
+        this.setDivUpImg();
+        this.setDivHalfImg();
+        this.setDivOver();
+
+        // this.setTemp();
+
+        this.setDivAll();
+        this.addSvg();
+        this.getSize(this.imgDown);
+        this.setSize();
+        this.eventOverDiv();
 
     }
 
-    getImgSize(img) {
-        this.imgHeight = img.clientHeight;
-        this.imgWidth = img.clientWidth;
+    getImages() {
+
+        this.imgUp = this.divAll.getElementsByTagName("img")[0];
+        this.imgDown = this.divAll.getElementsByTagName("img")[1];
+
+
+    }
+
+    setImageLoadEvent() {
+        this.imgUp.addEventListener('load', this.onLoadImage.bind(this, this.imgUp), true);
+        this.imgDown.addEventListener('load', this.onLoadImage.bind(this, this.imgDown), true);
     }
 
 
+    onLoadImage(img) {
+        // po załadowaniu obrazka
+        console.log("OnLoadIMG");
+        this.getSize(img);
+        this.setSize();
 
-    getImg() {
-        this.imgUp = this.divAll.childNodes[1];
-        this.imgDown = this.divAll.childNodes[3];
+    }
 
-        this.getImgSize(this.imgUp);
+    getSize(img) {
 
+        //określenie wielkośći zdjęć
+        let imageNewSize = {};
+        switch (this.sett.imageSize.type) {
+            case "natural":
+
+                // naturalne - wielkość zdjęcia
+                imageNewSize.height = img.naturalHeight;
+                imageNewSize.width = img.naturalWidth;
+                break;
+
+            case "set":
+
+                // set -wg ustawień w konfiguracji
+                imageNewSize.height = this.sett.imageSize.height;
+                imageNewSize.width = this.sett.imageSize.width;
+                break;
+
+            case "css":
+                //wg css
+
+                imageNewSize.height = img.clientHeight;
+                imageNewSize.width = img.clientWidth;
+                break;
+
+            case "full":
+
+                //wypełnia ekran na maksa
+                let newImg = Tools.resizeValue(img.naturalWidth, img.naturalHeight, window.innerWidth, window.innerHeight);
+                imageNewSize.data = {
+                    a: img.naturalWidth,
+                    b: img.naturalHeight,
+                    c: window.innerWidth,
+                    d: window.innerHeight
+                };
+                imageNewSize.height = newImg.height;
+                imageNewSize.width = newImg.width;
+                break;
+        }
+        this.imgHeight = imageNewSize.height;
+        this.imgWidth = imageNewSize.width;
+    }
+
+    setTemp() {
         this.imgUp.setAttribute('id', 'idImgUp;');
-        this.imgDown.setAttribute('id', 'idimgDown;');
+        this.imgDown.setAttribute('id', 'idImgDown;');
+        this.divImgUp.setAttribute('id', 'idImgUpDiv' + this.id); //ustaw id
+        this.divHalfImg.setAttribute('id', 'idImgHalfDiv' + this.id); //ustaw id
+        this.id++;
+    }
 
 
-        this.imgUpDiv = document.createElement('div'); //tworzenie elementu
-        this.imgUpDiv.setAttribute('id', 'idImgUpDiv' + this.id); //ustaw id
-        this.imgUpDiv.appendChild(this.imgUp);
-        this.divAll.appendChild(this.imgUpDiv);
+    setDivUpImg() {
+        this.divImgUp = document.createElement('div'); //tworzenie elementu
+        this.divImgUp.appendChild(this.imgUp);
+
+    }
+
+    setDivHalfImg() {
+        this.divHalfImg = document.createElement('div'); //tworzenie elementu
+        this.divHalfImg.appendChild(this.imgDown);
+    }
+
+
+    setDivAll() {
+        //dodawanie do głównego diwa nowo powstałych
+        this.divAll.appendChild(this.divImgUp);
+        this.divAll.appendChild(this.divHalfImg);
+        this.divAll.appendChild(this.overDiv);
+    }
+
+    setDivOver() {
+        //div przykrywający zdjęcia - przechwtyje rozpoczęcie zakończenie i zmianę pozycji
+        this.overDiv = document.createElement('div'); //tworzenie elementu
+        this.overDiv.setAttribute('id', 'idOver'); //ustaw id
+
+    }
+
+    setSize() {
+
+        // ustalewnie wielkości i pozycj poszczególnych elementów
         this.divAll.style.height = this.imgHeight + 'px';
         this.divAll.style.width = this.imgWidth + 'px';
-        this.divAll.style.overflow="hidden";
-        this.divAll.style.userSelect="none";
+        this.divAll.style.overflow = "hidden";
+        this.divAll.style.userSelect = "none";
 
-        this.imgUpDiv.style.cssText = "width:" + this.imgWidth + "px;position: relative;";
-        this.id++;
+        this.imgDown.style.height = this.imgHeight + "px";
+        this.imgDown.style.width = this.imgWidth + "px";
 
-        this.imgHalfDiv = document.createElement('div'); //tworzenie elementu
-        this.imgHalfDiv.setAttribute('id', 'idImgDownDiv' + this.id); //ustaw id
-        this.imgHalfDiv.appendChild(this.imgDown);
-        this.divAll.appendChild(this.imgHalfDiv);
+        this.imgUp.style.height = this.imgHeight + "px";
+        this.imgUp.style.width = this.imgWidth + "px";
+        this.divImgUp.style.cssText = "width:" + this.imgWidth + "px;position: relative;height:" + this.imgHeight + "px;";
 
-        this.overDiv = document.createElement('div'); //tworzenie elementu
+        this.divHalfImg.style.cssText = "height:" + this.imgHeight + ";width:" + (this.imgWidth / 2) + "px;border-right: 3px solid red;overflow: hidden;position: relative;\n" +
+            "    top: -" + this.imgHeight + "px;";
 
         this.overDiv.style.cssText = "height:" + this.imgHeight + "px;width:" + this.imgWidth + "px;position: relative;\n" +
-            "    top: -" + this.imgHeight * 2 + "px;z-index:100;";
-        this.overDiv.setAttribute('id', 'idOver'); //ustaw id
-        this.divAll.appendChild(this.overDiv);
+            "    top: -" + this.imgHeight * 2 + "px;z-index:" + this.sett.zIndex + 10 + ";";//background-color: rgba(143, 52, 254, 0.27);";
 
-        this.overDiv.addEventListener('mousedown', this.chngeSize.bind(this), true);
-        this.overDiv.addEventListener('mouseup', this.changeSizeEnd.bind(this), true);
+        this.divIcon.style.width = "100%";
+        this.divIcon.style.position = "relative";
 
-        this.overDiv.addEventListener('touchstart', this.chngeSize.bind(this), true);
-        this.overDiv.addEventListener('touchend', this.changeSizeEnd.bind(this), true);
-
-
-        this.imgHalfDiv.style.cssText = "height:" + this.imgHeight + ";width:" + this.imgWidth / 2 + "px;border-right: 3px solid red;overflow: hidden;position: relative;\n" +
-            "    top: -" + this.imgHeight + "px;";
-        this.id++;
-        this.addSvg();
+        this.divIcon.style.top = -(this.imgHeight * 2.5) + "px";
+        this.divIcon.style.zIndex = this.sett.zIndex;
+        this.divIcon.style.textAlign = "center";
 
     }
 
-    sizes(e) {
+    changeSize(e) {
+        //zmiana rozmiaru img przykrywającego
         let width;
         if (e.touches) {
             width = e.touches[0].clientX - this.overDiv.offsetLeft;
@@ -103,39 +204,146 @@ class GElements {
             width = this.imgWidth;
         }
         this.divIcon.style.left = (width - (this.imgWidth / 2)) + "px";
-        this.imgHalfDiv.style.width = width + "px";
+        this.divIcon.style.visibility = "hidden";
+        this.divHalfImg.style.width = width + "px";
     }
 
-    chngeSize() {
-        // console.log('size');
-        this.overDiv.addEventListener("mousemove", this.sizesHandler, false);
-        this.overDiv.addEventListener("touchmove", this.sizesHandler, false);
+    changeSizesStart(e) {
+        //rozpoczęcie przechwytywania zmiany rozmiaru po kliknięciu
+        this.overDiv.addEventListener("mousemove", this.changeSizeHendler, false);
+        this.overDiv.addEventListener("touchmove", this.changeSizeHendler, false);
     }
 
-    changeSizeEnd() {
-        // console.log('sizeEnd');
-        this.overDiv.removeEventListener("mousemove", this.sizesHandler, false);
-        this.overDiv.removeEventListener("touchmove", this.sizesHandler, false);
+    changeSizesStop() {
+        //zakończenie przechwytywania zmiany rozmiaru po kliknięciu
+        this.overDiv.removeEventListener("mousemove", this.changeSizeHendler, false);
+        this.overDiv.removeEventListener("touchmove", this.changeSizeHendler, false);
+        this.divIcon.style.visibility = "visible";
     }
 
+
+    //dodawanie strzałki prawo lewo svg
     addSvg() {
         let svgIco = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"66.951\" height=\"44.8\" viewBox=\"0 0 11255.125 7531.331\" shape-rendering=\"geometricPrecision\" text-rendering=\"geometricPrecision\" image-rendering=\"optimizeQuality\" fill-rule=\"evenodd\" clip-rule=\"evenodd\"><defs><style>.fil0{fill:#fefefe;fill-rule:nonzero}</style></defs><g id=\"Warstwa_x0020_1\"><path class=\"fil0\" d=\"M3782.693 6304.108h-992.389v1227.223L0 3765.665 2790.304 0v1227.223h992.389zM7472.432 6304.108h992.389v1227.223l2790.304-3765.666L8464.821 0v1227.223h-992.389z\"/></g></svg>"
-
-        let arrowPos = (this.imgHeight * 2) + 55;
-
         this.divIcon = document.createElement('div');
-        this.divIcon.style.width="100%";
-        // this.divIcon.classList.add('helpFullZielen');
-        this.divIcon.style.position = "relative";
-
-
-        this.divIcon.style.top = -arrowPos + "px";
-        this.divIcon.style.zIndex = 0;
-        this.divIcon.style.textAlign = "center";
 
         this.divIcon.insertAdjacentHTML('beforeend', svgIco);
+        this.divIcon.style.zIndex = this.sett.zIndex + 1;
         this.divAll.appendChild(this.divIcon);
     }
+
+    eventOverDiv() {
+//eventy sprawdzające kiedy zostało rozpoczęte przeciąganie
+        this.overDiv.addEventListener('mousedown', this.changeSizesStart.bind(this), true);
+        this.overDiv.addEventListener('mouseup', this.changeSizesStop.bind(this), true);
+
+        this.overDiv.addEventListener('touchstart', this.changeSizesStart.bind(this), true);
+        this.overDiv.addEventListener('touchend', this.changeSizesStop.bind(this), true);
+        //sprawdzanie czy podgląd pełnoekranowy jest włączony
+        if (this.sett.fullScreen.full) {
+            this.overDiv.addEventListener('dblclick', this.fullSize.bind(this), true);
+        }
+    }
+
+    fullSize() {
+        new FullScreenImage(this.sett, this.imgUp, this.imgDown);
+    }
 }
+
+class FullScreenImage {
+    constructor(sett, imgUp, imgDown) {
+        this.sett = sett;
+        this.divWrap = null;
+        this.imgUp = imgUp.cloneNode(true);
+        this.imgDown = imgDown.cloneNode(true);
+        this.imageWindow();
+    }
+
+    imageWindow() {
+        //ekran podglądu fullscrean
+        let divImageWrap = document.createElement("div");
+        divImageWrap.classList.add("divImageWrap");
+
+        this.divWrap = document.createElement("div");
+        this.divWrap.classList.add("divWrap"); //temp
+        this.divWrap.style.cssText =
+            "display:flex;position:fixed;top:0;left:0;bottom:0;right:0;background-color:" +
+            this.sett.fullScreen.backColor + ";border: 2px solid red;align-items: center;justify-content: center;z-index:" + (this.sett.zIndex + 10) + ";";
+
+        if (this.sett.fullScreen.big) {// jeśli ma wyświetlać duże img
+            // podmiana zdjęć na duże
+            this.imgDown.src = this.sett.fullScreen.bigUrl + this.imgDown.dataset.big;
+            this.imgUp.src = this.sett.fullScreen.bigUrl + this.imgUp.dataset.big;
+        }
+
+        divImageWrap.appendChild(this.imgDown);
+        divImageWrap.appendChild(this.imgUp);
+
+        this.divWrap.appendChild(divImageWrap);
+        document.body.appendChild(this.divWrap);
+
+
+        this.divWrap.addEventListener('dblclick', this.removeFullWindow.bind(this), true);
+
+        this.sett.imageSize.type = this.sett.fullScreen.type;
+        this.sett.fullScreen.full = false;
+
+        let cc = new Creator(divImageWrap, this.sett);
+        cc.setImageLoadEvent();
+
+    }
+
+    removeFullWindow() {
+        this.divWrap.remove();
+    }
+}
+
+class Tools {
+    static nameFromPatch(url) {
+        return url.substring(url.lastIndexOf('/') + 1);
+    }
+
+    static extension(url) {
+        let filename = this.nameFromPatch(url);
+        return filename.split('.').pop();
+    }
+
+    static resizeValue(imageWidth, imageHeight, maxWidth, maxHeight) {
+
+
+        if (imageWidth < maxWidth) {
+            let coe = ((imageWidth + maxWidth) ) / imageWidth;
+            imageWidth = imageWidth + maxWidth;
+            imageHeight = imageHeight * coe;
+        }
+
+        if (imageHeight < maxHeight) {
+            let coe = ((imageHeight + maxHeight) ) / imageHeight;
+            imageWidth = imageWidth * coe;
+            imageHeight = imageHeight +maxHeight;
+        }
+
+
+        if (imageWidth > maxWidth) {
+            imageHeight = imageHeight * (maxWidth / imageWidth);
+            imageWidth = maxWidth;
+            if (imageHeight > maxHeight) {
+                imageWidth = imageWidth * (maxHeight / imageHeight);
+                imageHeight = maxHeight;
+            }
+        } else if (imageHeight > maxHeight) {
+            imageWidth = imageWidth * (maxHeight / imageHeight);
+            imageHeight = maxHeight;
+            if (imageWidth > maxWidth) {
+                imageHeight = imageHeight * (maxWidth / imageWidth);
+                imageWidth = maxWidth;
+            }
+        }
+
+
+        return {width: imageWidth, height: imageHeight};
+    }
+}
+
 
 export default GizyImgChanger;
